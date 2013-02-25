@@ -1,0 +1,11 @@
+A very basic utility that I will be using to teach git.
+
+The problem I have is that when I run a set of git commands as part of a demonstration it is hard not to make mistakes and it is hard to remember all of the steps.
+
+The answer, a utility that reads commands from a file and runs them one at a time, printing each command as we go.
+
+Even better what if we could go backwards in time. If a question pops up about the previous step I want to go back to that state and play around to demonstrate things.
+
+The answer, there are two scripts. One script contains the demo commands, the other script cleans up everything that the demo commands produce. Every time we run a step we first run the clean up scripts (reset.sh) and run all demo commands (cmds.sh) up to the current point in the demo.
+
+Isn't that slow. Yes, if git weren't as fast as it is this would not be feasible (Also none of my demos do anything over the network).
