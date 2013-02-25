@@ -3,16 +3,20 @@ package main
 import (
 	"bufio"
 	"flag"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
 )
 
+const cmdsName = "/cmds.sh"
+const resetName = "reset.sh"
+
 var mainCmds, resetCmds []string
 
 var (
-	dirPath = flag.String("f", "", "Relative path to directory for command file lookup")
+	dirPath = flag.String("f", "./", "Relative path to directory for command file lookup")
 )
 
 func main() {
@@ -22,8 +26,8 @@ func main() {
 
 func setup() {
 	flag.Parse()
-	mainCmdsPath := *dirPath + "/mainCmds"
-	resetCmdsPath := *dirPath + "/resetCmds"
+	mainCmdsPath := *dirPath + cmdsName
+	resetCmdsPath := *dirPath + resetName
 	var err error
 	mainCmds, err = cmdsFromPath(mainCmdsPath)
 	if err != nil {
@@ -37,33 +41,49 @@ func setup() {
 
 func loop() {
 	in := bufio.NewReader(os.Stdin)
+	defer shouldReset(in)
 	cmdIdx := 0
+	OUTER_LOOP:
 	for {
-		if cmdIdx >= len(mainCmds) {
-			// TODO
+		if cmdIdx > len(mainCmds) {
+			return
 		}
 		runAll(resetCmds)
-		run(mainCmds, 0, cmdIdx)
-		switch pause(in) {
-		case 'j':
-			cmdIdx++
-		case 'k':
-			cmdIdx--
-		case 'e':
-			os.Exit(0)
-		default:
-			continue
+		run(mainCmds, 0, cmdIdx, true)
+		for {
+			c := pause(in)
+			switch c {
+			case 'j', '\n':
+				cmdIdx++
+				goto OUTER_LOOP
+			case 'k':
+				cmdIdx--
+				goto OUTER_LOOP
+			case 'e':
+				return
+			default:
+				println(c)
+				continue
+			}
 		}
 	}
 }
 
+func shouldReset(in *bufio.Reader) {
+	println("Run reset.sh one last time(y/n)?")
+	c := pause(in)
+	if c == 'y' || c == 'Y' {
+		runAll(resetCmds)
+	}
+}
+
 func pause(in *bufio.Reader) byte {
-	c, err := in.ReadByte()
+	c, err := in.ReadBytes('\n')
 	if err != nil {
 		println(err.Error())
 		os.Exit(1)
 	}
-	return c
+	return c[0]
 }
 
 func cmdsFromPath(fName string) ([]string, error) {
@@ -95,21 +115,28 @@ func cmdsFromFile(f *os.File) ([]string, error) {
 }
 
 func runAll(cmds []string) {
-	run(cmds, 0, len(cmds))
+	run(cmds, 0, len(cmds), false)
 }
 
-func run(cmds []string, from, to int) {
+func run(cmds []string, from, to int, vocal bool) {
 	for i := from; i < to; i++ {
 		name, args := fmtCommand(cmds[i])
 		out, err := exec.Command(name, args...).Output()
 		if err != nil {
 			panic(err.Error())
 		}
-		println(out)
+		if vocal {
+			print(name, " ")
+			for _, arg := range args {
+				print(arg, " ")
+			}
+			println(fmt.Sprintf("%s", out))
+		}
 	}
 }
 
 func fmtCommand(cmd string) (string, []string) {
-	ss := strings.Split(cmd, " ")
+	trimCmd := strings.Trim(cmd, "\n")
+	ss := strings.Split(trimCmd, " ")
 	return ss[0], ss[1:len(ss)]
 }
