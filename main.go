@@ -133,7 +133,7 @@ func run(cmds []string, from, to int, vocal bool) {
 		name, args := fmtCommand(cmds[i])
 		print(name, " ")
 		for _, arg := range args {
-			print(arg, " ")
+			print("'", arg, "' ")
 		}
 		println()
 		if name == "cd" {
@@ -145,12 +145,37 @@ func run(cmds []string, from, to int, vocal bool) {
 				panic(err.Error())
 			}
 		}
-		println()
 	}
 }
 
 func fmtCommand(cmd string) (string, []string) {
-	trimCmd := strings.Trim(cmd, "\n")
-	ss := strings.Split(trimCmd, " ")
+	cmd = strings.Trim(cmd, "\n")
+	ss := make([]string, 0)
+	quoted := false
+	curr := make([]rune, 0)
+	for _, r := range cmd {
+		if r == ' ' && !quoted {
+			if len(curr) > 0 {
+				ss = append(ss, string(curr))
+				curr = make([]rune, 0)
+			}
+			continue
+		}
+		if r == '"' {
+			quoted = !quoted
+			if !quoted && len(curr) > 0 {
+				ss = append(ss, string(curr))
+				curr = make([]rune, 0)
+			}
+			continue
+		}
+		curr = append(curr, r)
+	}
+	if len(curr) > 0 {
+		ss = append(ss, string(curr))
+	}
+	if quoted {
+		panic(fmt.Sprintf("Unbalanced quotations in command $s", cmd))
+	}
 	return ss[0], ss[1:len(ss)]
 }
