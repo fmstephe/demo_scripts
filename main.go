@@ -55,6 +55,7 @@ func loop() {
 		}
 		os.Chdir(workingDir)
 		runAll(resetCmds)
+		println("----------------------------")
 		run(mainCmds, 0, cmdIdx, true)
 		for {
 			c := pause(in)
@@ -81,6 +82,7 @@ func shouldReset() {
 	println("Run reset.sh one last time(y/n)?")
 	c := pause(in)
 	if c == 'y' || c == 'Y' {
+		os.Chdir(workingDir)
 		runAll(resetCmds)
 	}
 }
@@ -138,10 +140,10 @@ func run(cmds []string, from, to int, vocal bool) {
 			os.Chdir(args[0])
 		} else {
 			out, err := exec.Command(name, args...).Output()
+			print(fmt.Sprintf("%s", out))
 			if err != nil {
 				panic(err.Error())
 			}
-			print(fmt.Sprintf("%s", out))
 		}
 		println()
 	}
