@@ -1,3 +1,4 @@
 mkdir foo
-touch ./foo/touched
-touch ./foo/touchedII
+cd foo
+touch touched
+touch touchedII

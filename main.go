@@ -14,6 +14,8 @@ const cmdsName = "/cmds.sh"
 const resetName = "reset.sh"
 
 var mainCmds, resetCmds []string
+var workingDir string
+var in *bufio.Reader
 
 var (
 	dirPath = flag.String("f", "./", "Relative path to directory for command file lookup")
@@ -37,17 +39,21 @@ func setup() {
 	if err != nil {
 		panic(err.Error())
 	}
+	workingDir, err = os.Getwd()
+	if err != nil {
+		panic(err.Error())
+	}
+	in = bufio.NewReader(os.Stdin)
 }
 
 func loop() {
-	in := bufio.NewReader(os.Stdin)
-	defer shouldReset(in)
 	cmdIdx := 0
 	OUTER_LOOP:
 	for {
 		if cmdIdx > len(mainCmds) {
-			return
+			goto RESET
 		}
+		os.Chdir(workingDir)
 		runAll(resetCmds)
 		run(mainCmds, 0, cmdIdx, true)
 		for {
@@ -60,16 +66,18 @@ func loop() {
 				cmdIdx--
 				goto OUTER_LOOP
 			case 'e':
-				return
+				goto RESET
 			default:
 				println(c)
 				continue
 			}
 		}
 	}
+	RESET:
+	shouldReset()
 }
 
-func shouldReset(in *bufio.Reader) {
+func shouldReset() {
 	println("Run reset.sh one last time(y/n)?")
 	c := pause(in)
 	if c == 'y' || c == 'Y' {
@@ -121,17 +129,21 @@ func runAll(cmds []string) {
 func run(cmds []string, from, to int, vocal bool) {
 	for i := from; i < to; i++ {
 		name, args := fmtCommand(cmds[i])
-		out, err := exec.Command(name, args...).Output()
-		if err != nil {
-			panic(err.Error())
+		print(name, " ")
+		for _, arg := range args {
+			print(arg, " ")
 		}
-		if vocal {
-			print(name, " ")
-			for _, arg := range args {
-				print(arg, " ")
+		println()
+		if name == "cd" {
+			os.Chdir(args[0])
+		} else {
+			out, err := exec.Command(name, args...).Output()
+			if err != nil {
+				panic(err.Error())
 			}
-			println(fmt.Sprintf("%s", out))
+			print(fmt.Sprintf("%s", out))
 		}
+		println()
 	}
 }
 
